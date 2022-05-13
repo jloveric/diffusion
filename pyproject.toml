@@ -8,9 +8,11 @@ authors = ["John <john.loverich@gmail.com>"]
 python = "^3.9"
 denoising-diffusion-pytorch = "^0.14.3"
 torch = "^1.11.0"
+matplotlib = "^3.5.2"
 
 [tool.poetry.dev-dependencies]
 black = {version = "^22.3.0", allow-prereleases = true}
+jupyter = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -2,6 +2,8 @@ from denoising_diffusion_pytorch import Unet, GaussianDiffusion, Trainer
 
 from torchvision import datasets
 from torchvision.transforms import ToTensor
+from matplotlib import pyplot as plt
+import math
 
 """
 train_data = datasets.MNIST(
@@ -31,7 +33,7 @@ trainer = Trainer(
     image_size=image_size,
     train_batch_size=32,
     train_lr=2e-5,
-    train_num_steps=2,  # total training steps
+    train_num_steps=1000000,  # total training steps
     gradient_accumulate_every=2,  # gradient accumulation steps
     ema_decay=0.995,  # exponential moving average decay
     amp=True,  # turn on mixed precision
@@ -40,3 +42,14 @@ trainer = Trainer(
 trainer.train()
 
 sampled_images = diffusion.sample(batch_size=4)
+width = int(math.sqrt(len(sampled_images)))
+height = int(math.ceil(len(sampled_images) / width))
+
+f, axarr = plt.subplots(width, height)
+axarr = axarr.flatten()
+for index, e in enumerate(sampled_images):
+    print(axarr[index])
+    aval = e.permute(1, 2, 0).cpu().detach().numpy()
+    axarr[index].imshow(aval)
+
+plt.show()
