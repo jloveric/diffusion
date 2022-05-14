@@ -1,7 +1,7 @@
 # diffusion
+Consider these notes and then implementation stolen from others.  My goal here is to understand this enough and extend to high order methods.
 
-Copied from (None of this repo is mine)
-https://www.assemblyai.com/blog/diffusion-models-for-machine-learning-introduction/
+First source was this blog post [diffusion models for machine learning introduction](https://www.assemblyai.com/blog/diffusion-models-for-machine-learning-introduction/)
 
 Experiments in NN diffusion models
 
@@ -12,3 +12,5 @@ Current results are entirely from the above introduction running on a different 
 
 
 This paper (the original) is best for understanding why one can make all the assumptions made [Deep Unsupervised Learning Using Nonequilibrium Thermodynamics](https://arxiv.org/pdf/1503.03585.pdf) and the [Theano implementation](https://github.com/Sohl-Dickstein/Diffusion-Probabilistic-Models) from the authors. 
+
+Another useful [writeup](https://towardsdatascience.com/diffusion-models-made-easy-8414298ce4da) and corresponding [implementation]()
