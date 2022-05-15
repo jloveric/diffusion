@@ -16,3 +16,6 @@ This paper (the original) is best for understanding why one can make all the ass
 Another useful [writeup](https://towardsdatascience.com/diffusion-models-made-easy-8414298ce4da) and corresponding [implementation](https://github.com/azad-academy/denoising-diffusion-model)
 
 A [tutorial](https://github.com/acids-ircam/diffusion_models) which goes into everything including historical details. 
+
+Papers
+[Generative Modeling by Estimating Gradients of the Data Distribution (Noise Conditional Score Network)](https://arxiv.org/pdf/1907.05600.pdf)
