@@ -14,3 +14,5 @@ Current results are entirely from the above introduction running on a different 
 This paper (the original) is best for understanding why one can make all the assumptions made [Deep Unsupervised Learning Using Nonequilibrium Thermodynamics](https://arxiv.org/pdf/1503.03585.pdf) and the [Theano implementation](https://github.com/Sohl-Dickstein/Diffusion-Probabilistic-Models) from the authors. 
 
 Another useful [writeup](https://towardsdatascience.com/diffusion-models-made-easy-8414298ce4da) and corresponding [implementation]()
+
+A [tutorial](https://github.com/acids-ircam/diffusion_models) which goes into everything including historical details. 
