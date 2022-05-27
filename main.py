@@ -1,9 +1,12 @@
 from diffusion.denoising_diffusion_pytorch import Unet, GaussianDiffusion, Trainer
+from diffusion.diffusion import *
 
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 from matplotlib import pyplot as plt
 import math
+from pl_examples import _DATASETS_PATH, cli_lightning_logo
+from pl_examples.basic_examples.mnist_datamodule import MNIST
 
 """
 train_data = datasets.MNIST(
@@ -53,3 +56,48 @@ for index, e in enumerate(sampled_images):
     axarr[index].imshow(aval)
 
 plt.show()
+
+
+class MyDataModule(pl.LightningDataModule):
+    def __init__(self, batch_size: int = 32):
+        super().__init__()
+        dataset = MNIST(
+            _DATASETS_PATH, train=True, download=True, transform=transforms.ToTensor()
+        )
+        self.mnist_test = MNIST(
+            _DATASETS_PATH, train=False, download=True, transform=transforms.ToTensor()
+        )
+        self.mnist_train, self.mnist_val = random_split(dataset, [55000, 5000])
+        self.batch_size = batch_size
+
+    def train_dataloader(self):
+        return DataLoader(self.mnist_train, batch_size=self.batch_size)
+
+    def val_dataloader(self):
+        return DataLoader(self.mnist_val, batch_size=self.batch_size)
+
+    def test_dataloader(self):
+        return DataLoader(self.mnist_test, batch_size=self.batch_size)
+
+    def predict_dataloader(self):
+        return DataLoader(self.mnist_test, batch_size=self.batch_size)
+
+
+def cli_main():
+    cli = LightningCLI(
+        LitAutoEncoder,
+        MyDataModule,
+        seed_everything_default=1234,
+        save_config_overwrite=True,
+        run=False,  # used to de-activate automatic fitting.
+        trainer_defaults={"callbacks": ImageSampler(), "max_epochs": 10},
+    )
+    cli.trainer.fit(cli.model, datamodule=cli.datamodule)
+    cli.trainer.test(ckpt_path="best", datamodule=cli.datamodule)
+    predictions = cli.trainer.predict(ckpt_path="best", datamodule=cli.datamodule)
+    print(predictions[0])
+
+
+if __name__ == "__main__":
+    cli_lightning_logo()
+    cli_main()
