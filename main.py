@@ -1,4 +1,4 @@
-from denoising_diffusion_pytorch import Unet, GaussianDiffusion, Trainer
+from diffusion.denoising_diffusion_pytorch import Unet, GaussianDiffusion, Trainer
 
 from torchvision import datasets
 from torchvision.transforms import ToTensor
