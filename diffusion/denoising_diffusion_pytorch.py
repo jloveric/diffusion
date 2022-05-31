@@ -16,36 +16,7 @@ from PIL import Image
 from tqdm import tqdm
 from einops import rearrange
 from torch import Tensor
-from .util import exists, default
-
-
-def cycle(dl):
-    while True:
-        for data in dl:
-            yield data
-
-
-def num_to_groups(num, divisor):
-    groups = num // divisor
-    remainder = num % divisor
-    arr = [divisor] * groups
-    if remainder > 0:
-        arr.append(remainder)
-    return arr
-
-
-def normalize_to_neg_one_to_one(img):
-    return img * 2 - 1
-
-
-def unnormalize_to_zero_to_one(t):
-    return (t + 1) * 0.5
-
-
-def extract(a, t, x_shape):
-    b, *_ = t.shape
-    out = a.gather(-1, t)
-    return out.reshape(b, *((1,) * (len(x_shape) - 1)))
+from .util import exists, default, normalize_to_neg_one_to_one, cycle, extract
 
 
 def noise_like(shape, device, repeat=False):

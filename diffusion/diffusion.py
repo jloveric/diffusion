@@ -1,4 +1,5 @@
 from typing import Optional, Tuple
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
@@ -6,7 +7,7 @@ from torch import nn
 from torch.utils.data import DataLoader, random_split
 
 import pytorch_lightning as pl
-
+from .util import normalize_one_to_neg_one_to_one
 from pytorch_lightning.utilities.cli import LightningCLI
 from pytorch_lightning.utilities.imports import _TORCHVISION_AVAILABLE
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
@@ -17,7 +18,7 @@ if _TORCHVISION_AVAILABLE:
     from torchvision.utils import save_image
 from .denoising_diffusion_pytorch import GaussianDiffusion
 from .unet import Unet
-
+import copy
 
 class ImageSampler(pl.callbacks.Callback):
     def __init__(
@@ -96,16 +97,98 @@ class ImageSampler(pl.callbacks.Callback):
         )
 
 
+class DataModule(pl.LightningDataModule):
+    def __init__(self, folder, image_size, exts=["jpg", "jpeg", "png", "JPEG"]):
+        super().__init__()
+        self.folder = folder
+        self.image_size = image_size
+        self.paths = [p for ext in exts for p in Path(f"{folder}").glob(f"**/*.{ext}")]
+
+        self.transform = transforms.Compose(
+            [
+                transforms.Resize(image_size),
+                transforms.RandomHorizontalFlip(),
+                transforms.CenterCrop(image_size),
+                transforms.ToTensor(),
+                transforms.Lambda(normalize_to_neg_one_to_one),
+            ]
+        )
+
+    def setup(self, stage: Optional[str] = None):
+        self.mnist_test = MNIST(self.data_dir, train=False)
+        self.mnist_predict = MNIST(self.data_dir, train=False)
+        mnist_full = MNIST(self.data_dir, train=True)
+        self.mnist_train, self.mnist_val = random_split(mnist_full, [55000, 5000])
+
+    def train_dataloader(self):
+        return DataLoader(self.mnist_train, batch_size=self.batch_size)
+
+    def val_dataloader(self):
+        return DataLoader(self.mnist_val, batch_size=self.batch_size)
+
+    def test_dataloader(self):
+        return DataLoader(self.mnist_test, batch_size=self.batch_size)
+
+    def predict_dataloader(self):
+        return DataLoader(self.mnist_predict, batch_size=self.batch_size)
+
+    def teardown(self, stage: Optional[str] = None):
+        # Used to clean-up when the run is finished
+
+
 class Diffusion(pl.LightningModule):
-    def __init__(self, hidden_dim: int = 64):
+    def __init__(
+        self,
+        diffusion_model,
+        folder,
+        *,
+        ema_decay=0.995,
+        image_size=128,
+        train_batch_size=32,
+        train_lr=2e-5,
+        train_num_steps=100000,
+        gradient_accumulate_every=2,
+        amp=False,
+        step_start_ema=2000,
+        update_ema_every=10,
+        save_and_sample_every=1000,
+        results_folder="./results",
+    ):
         super().__init__()
 
-        self.model = GaussianDiffusion(
-            model=Unet(dim=64, dim_mults=(1, 2, 4, 8)).cuda(),
-            image_size=32,
-            timesteps=1000,
-            loss_type="l1",  # number of steps  # L1 or L2
+        self.model = diffusion_model
+        self.ema = EMA(ema_decay)
+        self.ema_model = copy.deepcopy(self.model)
+        self.update_ema_every = update_ema_every
+
+        # apparently we don't start the ema until the model has
+        # been trained a while.
+        self.step_start_ema = step_start_ema
+        self.save_and_sample_every = save_and_sample_every
+
+        self.batch_size = train_batch_size
+        self.image_size = diffusion_model.image_size
+        self.gradient_accumulate_every = gradient_accumulate_every
+        self.train_num_steps = train_num_steps
+
+        self.ds = Dataset(folder, image_size)
+        self.dl = cycle(
+            data.DataLoader(
+                self.ds, batch_size=train_batch_size, shuffle=True, pin_memory=True
+            )
         )
+        self.opt = Adam(diffusion_model.parameters(), lr=train_lr)
+
+        self.step = 0
+
+        self.amp = amp
+        self.scaler = GradScaler(enabled=amp)
+
+        self.results_folder = Path(results_folder)
+        self.results_folder.mkdir(exist_ok=True)
+
+        self.reset_parameters()
+
 
     def forward(self, x):
         z = self.encoder(x)
