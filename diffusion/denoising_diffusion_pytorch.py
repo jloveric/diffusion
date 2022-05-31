@@ -71,7 +71,9 @@ class EMA:
 
     def update_average(self, old, new):
         if old is None:
+            # TODO: I think this might be a bug as pretty sure we want a deepcopy here.
             return new
+
         return old * self.beta + (1 - self.beta) * new
 
 
@@ -444,12 +446,23 @@ class GaussianDiffusion(nn.Module):
         )
 
     def predict_start_from_noise(self, x_t, t, noise):
+        """
+        Remove the noise from the image for 1 timestep back.
+        The predicted noise is computed from the model.
+        Args :
+            x_t : x at time t
+            t : time
+            noise : The noise predicted by the model at the given time.
+        """
         return (
             extract(self.sqrt_recip_alphas_cumprod, t, x_t.shape) * x_t
             - extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape) * noise
         )
 
     def q_posterior(self, x_start, x_t, t):
+        """
+        Compute guassian quantites for q(x_t|x_{t-1}) I believe!
+        """
         posterior_mean = (
             extract(self.posterior_mean_coef1, t, x_t.shape) * x_start
             + extract(self.posterior_mean_coef2, t, x_t.shape) * x_t
@@ -461,6 +474,12 @@ class GaussianDiffusion(nn.Module):
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
     def p_mean_variance(self, x, t, clip_denoised: bool):
+        """
+        Compute mean and variance for p(x_{t-1}|x_t)
+        """
+
+        # I believe this is the image one step in the future? Though maybe it's
+        # the complete start? Pretty sure it's one step since this is included in a loop.
         x_recon = self.predict_start_from_noise(x, t=t, noise=self.denoise_fn(x, t))
 
         if clip_denoised:
@@ -473,6 +492,7 @@ class GaussianDiffusion(nn.Module):
 
     @torch.no_grad()
     def p_sample(self, x, t, clip_denoised=True, repeat_noise=False):
+        """ """
         b, *_, device = *x.shape, x.device
         model_mean, _, model_log_variance = self.p_mean_variance(
             x=x, t=t, clip_denoised=clip_denoised
@@ -544,11 +564,19 @@ class GaussianDiffusion(nn.Module):
 
     def p_losses(self, x_start, t, noise=None):
         b, c, h, w = x_start.shape
+
+        # return noise if it's defined otherwise return random value
+        # in the shape of x_start
         noise = default(noise, lambda: torch.randn_like(x_start))
 
+        # compute the noised version of x_start at time t
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
+
+        # run through the denoising NN
+        # Given P(t) compute P(t-1) - well actually compute the noise component from the noised image
         x_recon = self.denoise_fn(x_noisy, t)
 
+        # And if we compute the noise correctly this should be the loss
         loss = self.loss_fn(noise, x_recon)
         return loss
 
@@ -561,7 +589,10 @@ class GaussianDiffusion(nn.Module):
         assert (
             h == img_size and w == img_size
         ), f"height and width of image must be {img_size} but got {h} and {w}"
+
+        # grab some random timesteps in the diffusion process
         t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
+
         return self.p_losses(x, t, *args, **kwargs)
 
 
@@ -619,6 +650,8 @@ class Trainer(object):
         self.ema_model = copy.deepcopy(self.model)
         self.update_ema_every = update_ema_every
 
+        # apparently we don't start the ema until the model has
+        # been trained a while.
         self.step_start_ema = step_start_ema
         self.save_and_sample_every = save_and_sample_every
 
@@ -673,10 +706,17 @@ class Trainer(object):
 
     def train(self):
         while self.step < self.train_num_steps:
+
+            # accumulate gradients over n steps
             for i in range(self.gradient_accumulate_every):
+
+                # grab the next data from the dataloader
                 data = next(self.dl).cuda()
 
+                # autocast allows things to run in mixed precision
                 with autocast(enabled=self.amp):
+
+                    # train the denoising model, typically GaussianDiffusion!
                     loss = self.model(data)
                     self.scaler.scale(loss / self.gradient_accumulate_every).backward()
 
@@ -686,6 +726,7 @@ class Trainer(object):
             self.scaler.update()
             self.opt.zero_grad()
 
+            # Periodically update the exponential moving average given the diffusion model
             if self.step % self.update_ema_every == 0:
                 self.step_ema()
 
@@ -693,12 +734,19 @@ class Trainer(object):
                 self.ema_model.eval()
 
                 milestone = self.step // self.save_and_sample_every
+
+                # Create a list of equal batch sizes with the last element possibly being smaller
                 batches = num_to_groups(36, self.batch_size)
+
+                # Create a bunch of denoised samples (images) from the exponential moving average model
                 all_images_list = list(
                     map(lambda n: self.ema_model.sample(batch_size=n), batches)
                 )
+
                 all_images = torch.cat(all_images_list, dim=0)
                 all_images = unnormalize_to_zero_to_one(all_images)
+
+                # save all output in one giant combined image
                 utils.save_image(
                     all_images,
                     str(self.results_folder / f"sample-{milestone}.png"),
