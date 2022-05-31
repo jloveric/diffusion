@@ -1,5 +1,5 @@
 import pytest
-from diffusion.data import ImageDataset, ImageDataModule
+from diffusion.data import ImageDataModule
 
 
 def test_image_dataset():

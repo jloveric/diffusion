@@ -9,14 +9,13 @@ from torch.utils.data import DataLoader, random_split
 import pytorch_lightning as pl
 from .util import normalize_to_neg_one_to_one
 from pytorch_lightning.utilities.cli import LightningCLI
-from pytorch_lightning.utilities.imports import _TORCHVISION_AVAILABLE
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from exponential_moving_average import EMA
-
-if _TORCHVISION_AVAILABLE:
-    import torchvision
-    from torchvision import transforms
-    from torchvision.utils import save_image
+from torch.cuda.amp import autocast, GradScaler
+from pytorch_lightning.callbacks import Callback
+import torchvision
+from torchvision import transforms
+from torchvision.utils import save_image
 from .denoising_diffusion_pytorch import GaussianDiffusion
 from .unet import Unet
 import copy
@@ -50,10 +49,6 @@ class ImageSampler(pl.callbacks.Callback):
                 images separately rather than the (min, max) over all images. Default: ``False``.
             pad_value: Value for the padded pixels. Default: ``0``.
         """
-        if not _TORCHVISION_AVAILABLE:  # pragma: no cover
-            raise ModuleNotFoundError(
-                "You want to use `torchvision` which is not installed yet."
-            )
 
         super().__init__()
         self.num_samples = num_samples
@@ -79,8 +74,6 @@ class ImageSampler(pl.callbacks.Callback):
     def on_train_epoch_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
     ) -> None:
-        if not _TORCHVISION_AVAILABLE:
-            return
 
         images, _ = next(
             iter(DataLoader(trainer.datamodule.mnist_val, batch_size=self.num_samples))
@@ -101,24 +94,29 @@ class ImageSampler(pl.callbacks.Callback):
         )
 
 
+class EMACallback(Callback):
+    def __init__(self, ema: EMA):
+        self._ema = ema
+
+    def on_train_batch_end(self, trainer, pl_module):
+        self._ema.update_model_average(self.ema_model, pl_module.model)
+
+
 class Diffusion(pl.LightningModule):
     def __init__(
         self,
         diffusion_model,
-        folder,
-        *,
         ema_decay=0.995,
-        image_size=128,
         train_batch_size=32,
         train_lr=2e-5,
-        train_num_steps=100000,
-        gradient_accumulate_every=2,
         amp=False,
         step_start_ema=2000,
         update_ema_every=10,
-        save_and_sample_every=1000,
-        results_folder="./results",
     ):
+        """
+        Args :
+            diffusion_model :
+        """
         super().__init__()
 
         self.model = diffusion_model
@@ -129,59 +127,42 @@ class Diffusion(pl.LightningModule):
         # apparently we don't start the ema until the model has
         # been trained a while.
         self.step_start_ema = step_start_ema
-        self.save_and_sample_every = save_and_sample_every
 
         self.batch_size = train_batch_size
         self.image_size = diffusion_model.image_size
-        self.gradient_accumulate_every = gradient_accumulate_every
-        self.train_num_steps = train_num_steps
-
-        self.ds = Dataset(folder, image_size)
-        self.dl = cycle(
-            data.DataLoader(
-                self.ds, batch_size=train_batch_size, shuffle=True, pin_memory=True
-            )
-        )
-        self.opt = Adam(diffusion_model.parameters(), lr=train_lr)
+        self.train_lr = train_lr
 
         self.step = 0
 
         self.amp = amp
         self.scaler = GradScaler(enabled=amp)
 
-        self.results_folder = Path(results_folder)
-        self.results_folder.mkdir(exist_ok=True)
-
         self.reset_parameters()
 
     def forward(self, x):
-        z = self.encoder(x)
-        x_hat = self.decoder(z)
-        return x_hat
+        # the model returns the loss instead of the
+        # evaluation.  The evaluation is actually the
+        # predicted noise, so not very meaningful.
+        return self.model(x)
 
     def training_step(self, batch, batch_idx):
-        return self._common_step(batch, batch_idx, "train")
+        # x, y = batch you don't need this since the
+        # target is generated internally by diffusing the
+        # model.  As a result x=batch!
+        loss = self(batch)
+        self.log(f"train_loss", loss, prog_bar=True)
+        return loss
 
     def validation_step(self, batch, batch_idx):
-        self._common_step(batch, batch_idx, "val")
+        loss = self(batch)
+        self.log(f"val_loss", loss, prog_bar=True)
+        return loss
 
     def test_step(self, batch, batch_idx):
-        self._common_step(batch, batch_idx, "test")
-
-    def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        x = self._prepare_batch(batch)
-        return self(x)
+        loss = self.model(batch)
+        self.log(f"test_loss", loss, prog_bar=True)
+        return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.train_lr)
         return optimizer
-
-    def _prepare_batch(self, batch):
-        x, _ = batch
-        return x.view(x.size(0), -1)
-
-    def _common_step(self, batch, batch_idx, stage: str):
-        x = self._prepare_batch(batch)
-        loss = F.mse_loss(x, self(x))
-        self.log(f"{stage}_loss", loss, on_step=True)
-        return loss
