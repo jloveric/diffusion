@@ -1,12 +1,15 @@
-from diffusion.denoising_diffusion_pytorch import Unet, GaussianDiffusion, Trainer
-from diffusion.diffusion import *
+from diffusion.denoising_diffusion_pytorch import GaussianDiffusion, Trainer
+from diffusion.unet import Unet
+
+# from diffusion.diffusion import *
 
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 from matplotlib import pyplot as plt
 import math
-from pl_examples import _DATASETS_PATH, cli_lightning_logo
-from pl_examples.basic_examples.mnist_datamodule import MNIST
+
+# from pl_examples import _DATASETS_PATH, cli_lightning_logo
+# from pl_examples.basic_examples.mnist_datamodule import MNIST
 
 """
 train_data = datasets.MNIST(

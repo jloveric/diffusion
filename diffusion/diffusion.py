@@ -15,7 +15,8 @@ if _TORCHVISION_AVAILABLE:
     import torchvision
     from torchvision import transforms
     from torchvision.utils import save_image
-from .denoising_diffusion_pytorch import GaussianDiffusion, Unet
+from .denoising_diffusion_pytorch import GaussianDiffusion
+from .unet import Unet
 
 
 class ImageSampler(pl.callbacks.Callback):
