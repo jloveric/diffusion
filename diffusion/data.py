@@ -14,7 +14,7 @@ from PIL import Image
 from typing import List
 
 
-class GenericImageDataset(Dataset):
+class ImageDataset(Dataset):
     def __init__(self, image_size: int, path_list: List[str]):
         super().__init__()
         self.image_size = image_size
@@ -39,7 +39,7 @@ class GenericImageDataset(Dataset):
         return self.transform(img)
 
 
-class DataModule(pl.LightningDataModule):
+class ImageDataModule(pl.LightningDataModule):
     def __init__(
         self,
         image_size: int,
@@ -47,6 +47,7 @@ class DataModule(pl.LightningDataModule):
         exts: List[str] = ["jpg", "jpeg", "png", "JPEG"],
         batch_size=32,
         num_workers=10,
+        split_frac=0.8,
     ):
         super().__init__()
         self._image_size = image_size
@@ -54,33 +55,58 @@ class DataModule(pl.LightningDataModule):
         self._exts = exts
         self._batch_size = batch_size
         self._num_workers = num_workers
+        self._split_frac = split_frac
 
     def setup(self, stage: Optional[str] = None):
 
         self.folder = self._folder
         self.image_size = self._image_size
         self.paths = [
-            p for ext in self._exts for p in Path(f"{self.folder}").glob(f"**/*.{ext}")
+            p.as_posix()
+            for ext in self._exts
+            for p in Path(f"{self.folder}").glob(f"**/*.{ext}")
         ]
-        size = len(self.paths)
 
-        train_size = int(0.9 * size)
+        size = len(self.paths)
+        print("size", size)
+
+        train_size = int(self._split_frac * size)
         test_size = (size - train_size) // 2
         val_size = size - train_size - test_size
 
-        self._train_list, self._test_list, self._val_list = random_split(
-            self.paths, [train_size, test_size, val_size]
-        )
+        print("train_size", train_size, "test_size", test_size, "val_size", val_size)
 
-        self._train_dataset = GenericImageDataset(
+        self._train_list, self._test_list, self._val_list = [
+            list(val)
+            for val in random_split(self.paths, [train_size, test_size, val_size])
+        ]
+
+        print("train", self._train_list)
+        print("val", self._val_list)
+        print("test", self._test_list)
+
+        self._train_dataset = ImageDataset(
             image_size=self._image_size, path_list=self._train_list
         )
-        self._val_dataset = GenericImageDataset(
+
+        self._val_dataset = ImageDataset(
             image_size=self._image_size, path_list=self._val_list
         )
-        self._test_dataset = GenericImageDataset(
+        self._test_dataset = ImageDataset(
             image_size=self._image_size, path_list=self._test_list
         )
+
+    @property
+    def train_dataset(self):
+        return self._train_dataset
+
+    @property
+    def test_dataset(self):
+        return self._test_dataset
+
+    @property
+    def val_dataset(self):
+        return self._val_dataset
 
     def train_dataloader(self):
         return DataLoader(
@@ -93,7 +119,7 @@ class DataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(
-            self._train_dataset,
+            self._val_dataset,
             batch_size=self._batch_size,
             shuffle=False,
             pin_memory=True,
@@ -102,7 +128,7 @@ class DataModule(pl.LightningDataModule):
 
     def test_dataloader(self):
         return DataLoader(
-            self._train_dataset,
+            self._test_dataset,
             batch_size=self._batch_size,
             shuffle=False,
             pin_memory=True,

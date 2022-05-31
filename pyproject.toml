@@ -10,6 +10,7 @@ denoising-diffusion-pytorch = "^0.14.3"
 torch = "^1.11.0"
 matplotlib = "^3.5.2"
 pytorch-lightning = "^1.6.3"
+protobuf = "3.20.0"
 
 [tool.poetry.dev-dependencies]
 black = {version = "^22.3.0", allow-prereleases = true}
