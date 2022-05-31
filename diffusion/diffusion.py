@@ -7,10 +7,11 @@ from torch import nn
 from torch.utils.data import DataLoader, random_split
 
 import pytorch_lightning as pl
-from .util import normalize_one_to_neg_one_to_one
+from .util import normalize_to_neg_one_to_one
 from pytorch_lightning.utilities.cli import LightningCLI
 from pytorch_lightning.utilities.imports import _TORCHVISION_AVAILABLE
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
+from exponential_moving_average import EMA
 
 if _TORCHVISION_AVAILABLE:
     import torchvision
@@ -19,6 +20,9 @@ if _TORCHVISION_AVAILABLE:
 from .denoising_diffusion_pytorch import GaussianDiffusion
 from .unet import Unet
 import copy
+from torch.utils.data import Dataset
+from PIL import Image
+
 
 class ImageSampler(pl.callbacks.Callback):
     def __init__(
@@ -97,45 +101,6 @@ class ImageSampler(pl.callbacks.Callback):
         )
 
 
-class DataModule(pl.LightningDataModule):
-    def __init__(self, folder, image_size, exts=["jpg", "jpeg", "png", "JPEG"]):
-        super().__init__()
-        self.folder = folder
-        self.image_size = image_size
-        self.paths = [p for ext in exts for p in Path(f"{folder}").glob(f"**/*.{ext}")]
-
-        self.transform = transforms.Compose(
-            [
-                transforms.Resize(image_size),
-                transforms.RandomHorizontalFlip(),
-                transforms.CenterCrop(image_size),
-                transforms.ToTensor(),
-                transforms.Lambda(normalize_to_neg_one_to_one),
-            ]
-        )
-
-    def setup(self, stage: Optional[str] = None):
-        self.mnist_test = MNIST(self.data_dir, train=False)
-        self.mnist_predict = MNIST(self.data_dir, train=False)
-        mnist_full = MNIST(self.data_dir, train=True)
-        self.mnist_train, self.mnist_val = random_split(mnist_full, [55000, 5000])
-
-    def train_dataloader(self):
-        return DataLoader(self.mnist_train, batch_size=self.batch_size)
-
-    def val_dataloader(self):
-        return DataLoader(self.mnist_val, batch_size=self.batch_size)
-
-    def test_dataloader(self):
-        return DataLoader(self.mnist_test, batch_size=self.batch_size)
-
-    def predict_dataloader(self):
-        return DataLoader(self.mnist_predict, batch_size=self.batch_size)
-
-    def teardown(self, stage: Optional[str] = None):
-        # Used to clean-up when the run is finished
-
-
 class Diffusion(pl.LightningModule):
     def __init__(
         self,
@@ -188,7 +153,6 @@ class Diffusion(pl.LightningModule):
         self.results_folder.mkdir(exist_ok=True)
 
         self.reset_parameters()
-
 
     def forward(self, x):
         z = self.encoder(x)

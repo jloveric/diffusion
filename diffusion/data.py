@@ -8,18 +8,8 @@ from torch.utils.data import DataLoader, Dataset, random_split
 
 import pytorch_lightning as pl
 from .util import normalize_to_neg_one_to_one
-from pytorch_lightning.utilities.cli import LightningCLI
-from pytorch_lightning.utilities.imports import _TORCHVISION_AVAILABLE
-from pytorch_lightning.utilities.rank_zero import rank_zero_only
-from exponential_moving_average import EMA
-
-if _TORCHVISION_AVAILABLE:
-    import torchvision
-    from torchvision import transforms
-    from torchvision.utils import save_image
+from torchvision import transforms
 from .denoising_diffusion_pytorch import GaussianDiffusion
-from .unet import Unet
-import copy
 from PIL import Image
 from typing import List
 
@@ -55,11 +45,15 @@ class DataModule(pl.LightningDataModule):
         image_size: int,
         folder: str,
         exts: List[str] = ["jpg", "jpeg", "png", "JPEG"],
+        batch_size=32,
+        num_workers=10,
     ):
         super().__init__()
         self._image_size = image_size
         self._folder = folder
         self._exts = exts
+        self._batch_size = batch_size
+        self._num_workers = num_workers
 
     def setup(self, stage: Optional[str] = None):
 
@@ -71,24 +65,46 @@ class DataModule(pl.LightningDataModule):
         size = len(self.paths)
 
         train_size = int(0.9 * size)
-        test_size = (size - test_size) // 2
+        test_size = (size - train_size) // 2
         val_size = size - train_size - test_size
 
         self._train_list, self._test_list, self._val_list = random_split(
             self.paths, [train_size, test_size, val_size]
         )
 
-    def train_dataloader(self):
-        return GenericImageDataset(
+        self._train_dataset = GenericImageDataset(
             image_size=self._image_size, path_list=self._train_list
+        )
+        self._val_dataset = GenericImageDataset(
+            image_size=self._image_size, path_list=self._val_list
+        )
+        self._test_dataset = GenericImageDataset(
+            image_size=self._image_size, path_list=self._test_list
+        )
+
+    def train_dataloader(self):
+        return DataLoader(
+            self._train_dataset,
+            batch_size=self._batch_size,
+            shuffle=True,
+            pin_memory=True,
+            num_workers=self._num_workers,
         )
 
     def val_dataloader(self):
-        return GenericImageDataset(
-            image_size=self._image_size, path_list=self._val_list
+        return DataLoader(
+            self._train_dataset,
+            batch_size=self._batch_size,
+            shuffle=False,
+            pin_memory=True,
+            num_workers=self._num_workers,
         )
 
     def test_dataloader(self):
-        return GenericImageDataset(
-            image_size=self._image_size, path_list=self._test_list
+        return DataLoader(
+            self._train_dataset,
+            batch_size=self._batch_size,
+            shuffle=False,
+            pin_memory=True,
+            num_workers=self._num_workers,
         )
