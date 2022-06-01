@@ -8,6 +8,9 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning import LightningModule, Trainer, Callback
 from diffusion.exponential_moving_average import EMA
 import copy
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def train_diffusion(cfg: DictConfig):
@@ -35,7 +38,7 @@ def train_diffusion(cfg: DictConfig):
     # using a moving average of the weights.
     ema = EMA(beta=cfg.ema.beta)
     ema_model = copy.deepcopy(diffusion)
-    ema_callback = EMACallback(ema=ema, ema_model=ema_model)
+    ema_callback = EMACallback(ema=ema, ema_model=ema_model, step_start_ema=2000)
 
     sampler = ImageSampler(ema_model=ema_model)
     logger = TensorBoardLogger("tb_logs", name="diffusion")
@@ -50,8 +53,8 @@ def train_diffusion(cfg: DictConfig):
     trainer.fit(model, datamodule=image_datamodule)
     result = trainer.test(model, datamodule=image_datamodule)
 
-    print("finished testing")
-    print("result", result)
+    logger.info("finished testing")
+    logger.info("result", result)
     return result
 
 

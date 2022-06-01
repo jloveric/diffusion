@@ -24,6 +24,9 @@ from PIL import Image
 from diffusion.util import num_to_groups, unnormalize_to_zero_to_one
 from io import BytesIO
 from torchvision.utils import make_grid
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ImageSampler(pl.callbacks.Callback):
@@ -67,16 +70,29 @@ class EMACallback(Callback):
         self,
         ema: EMA,
         ema_model: torch.nn.Module,
-        step_start_ema: int = 20,
+        step_start_ema: int = 2000,
         update_ema_every: int = 10,
     ):
+        """
+        Exponential moving average callback to be used with lightning trainer
+        Args :
+            ema : The exponential moving average class instance
+            ema_model : The model containing the exponential moving average
+            step_start_ema : Start computing the average after this number of steps
+            update_ema_every : Update the ema after this number of steps.
+        """
         self._ema = ema
         self._ema_model = ema_model
         self._step_start_ema = step_start_ema
         self._update_ema_every = update_ema_every
+        self._started = False
 
     def on_train_batch_end(self, trainer, pl_module, *args, **kwargs):
-        if (
+        if trainer.global_step >= self._step_start_ema and self._started is False:
+            self._started = True
+            self._ema.copy_current(self._ema_model, pl_module.model)
+            logger.info("EMA copied base model")
+        elif (
             trainer.global_step >= self._step_start_ema
             and trainer.global_step % self._update_ema_every == 0
         ):
