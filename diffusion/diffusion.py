@@ -27,10 +27,13 @@ from torchvision.utils import make_grid
 
 
 class ImageSampler(pl.callbacks.Callback):
-    def __init__(self, ema_model: torch.nn.Module, batch_size=32) -> None:
+    def __init__(
+        self, ema_model: torch.nn.Module, batch_size: int = 32, samples: int = 36
+    ) -> None:
         super().__init__()
         self._ema_model = ema_model
         self._batch_size = batch_size
+        self._samples = samples
 
     @rank_zero_only
     def on_train_epoch_end(
@@ -39,7 +42,7 @@ class ImageSampler(pl.callbacks.Callback):
         self._ema_model.eval()
 
         # Create a list of equal batch sizes with the last element possibly being smaller
-        batches = num_to_groups(36, self._batch_size)
+        batches = num_to_groups(self._samples, self._batch_size)
 
         # Create a bunch of denoised samples (images) from the exponential moving average model
         all_images_list = list(
@@ -64,7 +67,7 @@ class EMACallback(Callback):
         self,
         ema: EMA,
         ema_model: torch.nn.Module,
-        step_start_ema: int = 2000,
+        step_start_ema: int = 20,
         update_ema_every: int = 10,
     ):
         self._ema = ema
@@ -81,16 +84,7 @@ class EMACallback(Callback):
 
 
 class Diffusion(pl.LightningModule):
-    def __init__(
-        self,
-        diffusion_model,
-        ema_decay: float = 0.995,
-        train_batch_size: int = 32,
-        train_lr: float = 2e-5,
-        amp: bool = False,
-        step_start_ema: int = 2000,
-        update_ema_every: int = 10,
-    ):
+    def __init__(self, diffusion_model, train_lr: float = 2e-5, amp: bool = False):
         """
         Args :
             diffusion_model :
@@ -99,19 +93,8 @@ class Diffusion(pl.LightningModule):
         self.save_hyperparameters()
 
         self.model = diffusion_model
-        self.ema = EMA(ema_decay)
-        self.update_ema_every = update_ema_every
-
-        # apparently we don't start the ema until the model has
-        # been trained a while.
-        self.step_start_ema = step_start_ema
-
-        self.batch_size = train_batch_size
-        self.image_size = diffusion_model.image_size
         self.train_lr = train_lr
-
         self.step = 0
-
         self.amp = amp
         self.scaler = GradScaler(enabled=amp)
 

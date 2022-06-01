@@ -1,12 +1,15 @@
 import copy
 from torch.nn import Module
+from torch import Tensor
 
 
 class EMA:
-    def __init__(self, beta):
+    def __init__(self, beta: float):
         """
         Exponential moving average class.  Exponential moving average gives better results
         for generative models.
+        Args :
+          beta : decay factor for older data in the average.
         """
         super().__init__()
         self.beta = beta
@@ -23,7 +26,7 @@ class EMA:
             old_weight, up_weight = ma_params.data, current_params.data
             ma_params.data = self.update_average(old_weight, up_weight)
 
-    def update_average(self, old: Module, new: Module) -> Module:
+    def update_average(self, old: Tensor, new: Tensor) -> Module:
         """
         Compute the weighted average of the old weights and the new weights
         Args :
@@ -34,6 +37,6 @@ class EMA:
         """
         if old is None:
             # TODO: I think this might be a bug as pretty sure we want a deepcopy here.
-            return copy.deepcopy(new)
+            return new  # copy.deepcopy(new)
 
         return old * self.beta + (1 - self.beta) * new
