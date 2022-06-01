@@ -286,7 +286,7 @@ class GaussianDiffusion(nn.Module):
 
 # dataset classes
 
-
+"""
 class Dataset(data.Dataset):
     def __init__(self, folder, image_size, exts=["jpg", "jpeg", "png", "JPEG"]):
         super().__init__()
@@ -445,3 +445,4 @@ class Trainer(object):
             self.step += 1
 
         print("training completed")
+"""

@@ -34,10 +34,10 @@ def train_diffusion(cfg: DictConfig):
     # Apparently diffusion models give better results if we
     # using a moving average of the weights.
     ema = EMA(beta=0.995)
-    ema_model = copy.deepcopy(model)
+    ema_model = copy.deepcopy(diffusion)
     ema_callback = EMACallback(ema=ema, ema_model=ema_model)
 
-    sampler = ImageSampler()
+    sampler = ImageSampler(ema_model=ema_model)
     logger = TensorBoardLogger("tb_logs", name="vae")
     trainer = Trainer(
         max_epochs=cfg.epochs,
