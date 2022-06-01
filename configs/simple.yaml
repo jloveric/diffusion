@@ -2,4 +2,4 @@ epochs: 100
 gpus: 1
 data:
   image_size: 32
-  folder: "/mnt/1000gb/cifar10/test/airplane"
+  folder: "/mnt/1000gb/cifar10/train/ship"

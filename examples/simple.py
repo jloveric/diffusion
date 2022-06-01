@@ -47,7 +47,7 @@ def train_diffusion(cfg: DictConfig):
     )
 
     trainer.fit(model, datamodule=image_datamodule)
-    result = trainer.test(model)
+    result = trainer.test(model, datamodule=image_datamodule)
 
     print("finished testing")
     print("result", result)

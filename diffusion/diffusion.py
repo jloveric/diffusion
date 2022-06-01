@@ -58,21 +58,6 @@ class ImageSampler(pl.callbacks.Callback):
             "img", torch.tensor(img).permute(2, 0, 1), global_step=trainer.global_step
         )
 
-        """
-        iobuf = BytesIO()
-
-        # save all output in one giant combined image
-        torchvision.utils.save_image(
-            tensor=all_images,
-            fp=iobuf,
-            nrow=6,
-        )
-
-        trainer.logger.experiment.add_image(
-            "img", iobuf, global_step=trainer.global_step
-        )
-        """
-
 
 class EMACallback(Callback):
     def __init__(
@@ -99,22 +84,22 @@ class Diffusion(pl.LightningModule):
     def __init__(
         self,
         diffusion_model,
-        ema_decay=0.995,
-        train_batch_size=32,
-        train_lr=2e-5,
-        amp=False,
-        step_start_ema=2000,
-        update_ema_every=10,
+        ema_decay: float = 0.995,
+        train_batch_size: int = 32,
+        train_lr: float = 2e-5,
+        amp: bool = False,
+        step_start_ema: int = 2000,
+        update_ema_every: int = 10,
     ):
         """
         Args :
             diffusion_model :
         """
         super().__init__()
+        self.save_hyperparameters()
 
         self.model = diffusion_model
         self.ema = EMA(ema_decay)
-        # self.ema_model = copy.deepcopy(self.model)
         self.update_ema_every = update_ema_every
 
         # apparently we don't start the ema until the model has

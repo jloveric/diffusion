@@ -68,22 +68,15 @@ class ImageDataModule(pl.LightningDataModule):
         ]
 
         size = len(self.paths)
-        print("size", size)
 
         train_size = int(self._split_frac * size)
         test_size = (size - train_size) // 2
         val_size = size - train_size - test_size
 
-        print("train_size", train_size, "test_size", test_size, "val_size", val_size)
-
         self._train_list, self._test_list, self._val_list = [
             list(val)
             for val in random_split(self.paths, [train_size, test_size, val_size])
         ]
-
-        print("train", self._train_list)
-        print("val", self._val_list)
-        print("test", self._test_list)
 
         self._train_dataset = ImageDataset(
             image_size=self._image_size, path_list=self._train_list
