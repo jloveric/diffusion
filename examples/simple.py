@@ -28,7 +28,7 @@ def train_diffusion(cfg: DictConfig):
         num_workers=cfg.data.num_workers,
         split_frac=cfg.data.split_frac,
     )
-    model = Diffusion(diffusion_model=diffusion)
+    model = Diffusion(diffusion_model=diffusion, train_lr=cfg.trainer.lr)
 
     # Set up the exponential moving average.
     # Diffusion models give better results if we

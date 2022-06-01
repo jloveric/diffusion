@@ -1,6 +1,8 @@
 max_epochs: null
 max_steps: 100000
 gpus: 1
+trainer:
+  lr: 2e-5
 data:
   image_size: 32
   folder: "/mnt/1000gb/cifar10/train"
