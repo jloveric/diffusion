@@ -10,14 +10,14 @@ import pytorch_lightning as pl
 from .util import normalize_to_neg_one_to_one
 from pytorch_lightning.utilities.cli import LightningCLI
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
-from exponential_moving_average import EMA
+from diffusion.exponential_moving_average import EMA
 from torch.cuda.amp import autocast, GradScaler
 from pytorch_lightning.callbacks import Callback
 import torchvision
 from torchvision import transforms
 from torchvision.utils import save_image
-from .denoising_diffusion_pytorch import GaussianDiffusion
-from .unet import Unet
+from diffusion.denoising_diffusion_pytorch import GaussianDiffusion
+from diffusion.unet import Unet
 import copy
 from torch.utils.data import Dataset
 from PIL import Image
@@ -74,7 +74,7 @@ class ImageSampler(pl.callbacks.Callback):
     def on_train_epoch_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
     ) -> None:
-
+        """
         images, _ = next(
             iter(DataLoader(trainer.datamodule.mnist_val, batch_size=self.num_samples))
         )
@@ -92,14 +92,16 @@ class ImageSampler(pl.callbacks.Callback):
             self._to_grid(images_generated.reshape(images.shape)),
             f"grid_generated_{trainer.current_epoch}.png",
         )
+        """
 
 
 class EMACallback(Callback):
-    def __init__(self, ema: EMA):
+    def __init__(self, ema: EMA, ema_model):
         self._ema = ema
+        self._ema_model = ema_model
 
-    def on_train_batch_end(self, trainer, pl_module):
-        self._ema.update_model_average(self.ema_model, pl_module.model)
+    def on_train_batch_end(self, trainer, pl_module, *args, **kwargs):
+        self._ema.update_model_average(self._ema_model, pl_module.model)
 
 
 class Diffusion(pl.LightningModule):
@@ -137,7 +139,7 @@ class Diffusion(pl.LightningModule):
         self.amp = amp
         self.scaler = GradScaler(enabled=amp)
 
-        self.reset_parameters()
+        # self.reset_parameters()
 
     def forward(self, x):
         # the model returns the loss instead of the

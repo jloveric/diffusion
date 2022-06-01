@@ -22,5 +22,5 @@ Papers
 
 ## Training
 ```
-python main.py
+python examples/simple.py
 ```
