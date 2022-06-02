@@ -1,3 +1,4 @@
+# Original source https://github.com/acids-ircam/diffusion_models
 from torch.nn import Module
 from torch import Tensor
 

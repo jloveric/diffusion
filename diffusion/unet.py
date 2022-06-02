@@ -1,3 +1,4 @@
+# Original source https://github.com/acids-ircam/diffusion_models
 import math
 import torch
 from torch import nn, einsum

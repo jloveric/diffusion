@@ -1,3 +1,4 @@
+# Original source https://github.com/acids-ircam/diffusion_models
 from torch import Tensor
 from inspect import isfunction
 from typing import Any
