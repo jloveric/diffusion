@@ -1,5 +1,5 @@
 max_epochs: null
-max_steps: 100000
+max_steps: 1000000
 gpus: 1
 trainer:
   lr: 2e-5
@@ -8,6 +8,7 @@ data:
   folder: "/mnt/1000gb/cifar10/train"
   batch_size: 32
   num_workers: 10
-  split_frac: 0.8 # .8 train, .1 test .1 validation
+  split_frac: 0.9 # .8 train, .1 test .1 validation
 ema: # Exponential moving average
   beta: 0.995
+  start: 2000

@@ -1,28 +1,12 @@
-from typing import Optional, Tuple
-from pathlib import Path
-
 import torch
-import torch.nn.functional as F
-from torch import nn
-from torch.utils.data import DataLoader, random_split
 
 import pytorch_lightning as pl
-from .util import normalize_to_neg_one_to_one
-from pytorch_lightning.utilities.cli import LightningCLI
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from diffusion.exponential_moving_average import EMA
-from torch.cuda.amp import autocast, GradScaler
 from pytorch_lightning.callbacks import Callback
-import torchvision
-from torchvision import transforms
+
 from torchvision.utils import save_image
-from diffusion.denoising_diffusion_pytorch import GaussianDiffusion
-from diffusion.unet import Unet
-import copy
-from torch.utils.data import Dataset
-from PIL import Image
 from diffusion.util import num_to_groups, unnormalize_to_zero_to_one
-from io import BytesIO
 from torchvision.utils import make_grid
 import logging
 
@@ -31,12 +15,17 @@ logger = logging.getLogger(__name__)
 
 class ImageSampler(pl.callbacks.Callback):
     def __init__(
-        self, ema_model: torch.nn.Module, batch_size: int = 32, samples: int = 36
+        self,
+        ema_model: torch.nn.Module,
+        batch_size: int = 32,
+        samples: int = 36,
+        directory: str = None,
     ) -> None:
         super().__init__()
         self._ema_model = ema_model
         self._batch_size = batch_size
         self._samples = samples
+        self._directory = directory
 
     @rank_zero_only
     def on_train_epoch_end(
@@ -55,7 +44,7 @@ class ImageSampler(pl.callbacks.Callback):
         all_images = torch.cat(all_images_list, dim=0)
 
         # TODO: make sure this is denormalized properly
-        all_images = unnormalize_to_zero_to_one(all_images) * 256
+        all_images = unnormalize_to_zero_to_one(all_images)
 
         img = make_grid(all_images).permute(1, 2, 0).cpu().numpy()
 
@@ -63,6 +52,14 @@ class ImageSampler(pl.callbacks.Callback):
         trainer.logger.experiment.add_image(
             "img", torch.tensor(img).permute(2, 0, 1), global_step=trainer.global_step
         )
+
+        """
+        torchvision.utils.save_image(
+            all_images,
+            f"{self._directory}/results/sample-{trainer.global_step}.png",
+            nrow=6,
+        )
+        """
 
 
 class EMACallback(Callback):
@@ -112,7 +109,7 @@ class Diffusion(pl.LightningModule):
         self.train_lr = train_lr
         self.step = 0
         self.amp = amp
-        self.scaler = GradScaler(enabled=amp)
+        # self.scaler = GradScaler(enabled=amp)
 
         # self.reset_parameters()
 

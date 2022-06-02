@@ -38,15 +38,19 @@ def train_diffusion(cfg: DictConfig):
     # using a moving average of the weights.
     ema = EMA(beta=cfg.ema.beta)
     ema_model = copy.deepcopy(diffusion)
-    ema_callback = EMACallback(ema=ema, ema_model=ema_model, step_start_ema=2000)
+    ema_callback = EMACallback(
+        ema=ema, ema_model=ema_model, step_start_ema=cfg.ema.start
+    )
 
-    sampler = ImageSampler(ema_model=ema_model)
-    logger = TensorBoardLogger("tb_logs", name="diffusion")
+    sampler = ImageSampler(
+        ema_model=ema_model, directory=f"{hydra.utils.get_original_cwd()}"
+    )
+    tb_logger = TensorBoardLogger("tb_logs", name="diffusion")
     trainer = Trainer(
         max_epochs=cfg.max_epochs,
         max_steps=cfg.max_steps,
         gpus=cfg.gpus,
-        logger=logger,
+        logger=tb_logger,
         callbacks=[sampler, ema_callback],
     )
 
