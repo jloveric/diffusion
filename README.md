@@ -1,5 +1,5 @@
 # Image Generation using Diffusion Models
-Model modified from [this git repo](https://github.com/lucidrains/denoising-diffusion-pytorch) to use pytorch lightning, hydra, tensorboard.  Intend to extend this to other types of networks including high order networks.
+Model modified from [this git repo](https://github.com/lucidrains/denoising-diffusion-pytorch) to use pytorch lightning, hydra, tensorboard, nevergrad and poetry.  Intend to extend this to other types of networks including high order networks.
 
 ## Training
 ```
