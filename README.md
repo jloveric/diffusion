@@ -11,7 +11,12 @@ Configuration file is in yaml [here](configs/simple.yaml)
 ## Results
 Experiments in NN diffusion models.
 
-![Predicted samples from cifar10 training set](images/sample-151.png)
+ ### Predicted samples from celeba training set 50k iterations
+![Predicted samples from celeba training set 50k iterations](images/celeba.png)
+
+### Predicted samples from cifar10 training set 300k iterations
+![Predicted samples from cifar10 training set 300k iterations](images/sample-151.png)
+
 
 # References
 * [diffusion models for machine learning introduction](https://www.assemblyai.com/blog/diffusion-models-for-machine-learning-introduction/)

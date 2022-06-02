@@ -17,7 +17,7 @@ class ImageSampler(pl.callbacks.Callback):
     def __init__(
         self,
         ema_model: torch.nn.Module,
-        batch_size: int = 32,
+        batch_size: int = 36,
         samples: int = 36,
         directory: str = None,
     ) -> None:
