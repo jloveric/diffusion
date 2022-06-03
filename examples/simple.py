@@ -2,10 +2,10 @@ from diffusion.diffusion import Diffusion, EMACallback, ImageSampler
 from diffusion.denoising_diffusion_pytorch import GaussianDiffusion
 from diffusion.unet import Unet
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 from diffusion.data import ImageDataModule
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning import LightningModule, Trainer, Callback
+from pytorch_lightning import Trainer
 from diffusion.exponential_moving_average import EMA
 import copy
 import logging

@@ -11,7 +11,7 @@ Configuration file is in yaml [here](configs/simple.yaml)
 ## Results
 Experiments in NN diffusion models.
 
- ### Predicted samples from celeba training set 50k iterations
+ ### Predicted samples from celeba training set 200k iterations
 ![Predicted samples from celeba training set 50k iterations](images/celeba.png)
 
 ### Predicted samples from cifar10 training set 300k iterations
