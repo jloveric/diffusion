@@ -19,7 +19,7 @@ Experiments in NN diffusion models.
 
 
 # References
-* [diffusion models for machine learning introduction](https://www.assemblyai.com/blog/diffusion-models-for-machine-learning-introduction/)
+* [Diffusion models for machine learning introduction](https://www.assemblyai.com/blog/diffusion-models-for-machine-learning-introduction/)
 * [Deep Unsupervised Learning Using Nonequilibrium Thermodynamics](https://arxiv.org/pdf/1503.03585.pdf) and the [Theano implementation](https://github.com/Sohl-Dickstein/Diffusion-Probabilistic-Models) from the authors. 
 * [Diffusion models made easy](https://towardsdatascience.com/diffusion-models-made-easy-8414298ce4da) and corresponding [implementation](https://github.com/azad-academy/denoising-diffusion-model)
 * A [tutorial](https://github.com/acids-ircam/diffusion_models) which goes into everything including historical details. 
